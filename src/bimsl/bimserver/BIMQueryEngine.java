@@ -2,6 +2,7 @@ package bimsl.bimserver;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -232,9 +233,22 @@ public class BIMQueryEngine {
 		return query.getResult();
 	}
 	
-	public Map<IfcRoot, List<Object>> queryRelatedObjects(List<IfcRoot> objects, String type, int depth) {
-		QueryRelatedObjects query = new QueryRelatedObjects(objects, type, depth);
-		return query.getResult();
+	public Map<IfcRoot, List<Object>> queryRelatedObjects(List<IfcRoot> objects, String type) {
+		Map<IfcRoot, List<Object>> result = new HashMap<IfcRoot, List<Object>>();
+		for (IfcRoot object : objects) {
+			QueryRelatedObjects query = new QueryRelatedObjects(object, type, -1);
+			result.put(object, query.getResult());
+		}
+		return result;
+	}
+	
+	public Map<IfcRoot, List<Object>> queryRelatedObjectsWithDepth(List<IfcRoot> objects, String type, int depth) {
+		Map<IfcRoot, List<Object>> result = new HashMap<IfcRoot, List<Object>>();
+		for (IfcRoot object : objects) {
+			QueryRelatedObjects query = new QueryRelatedObjects(object, type, depth);
+			result.put(object, query.getResult());
+		}
+		return result;
 	}
 	
 	public String querySingleEntityType(IfcRoot entity) {

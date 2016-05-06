@@ -61,15 +61,18 @@ public class App {
 		// select Obj.EntityType, Obj.Attribute.GlobalId 
 		// from AllObjects 
 		// where Obj.Attribute.Name = *Level
-		Map<IfcRoot, List<Object>> allobjnames = bimengine.queryAttribute(bimengine.getAllObjects(), "Name");
+		/*Map<IfcRoot, List<Object>> allobjnames = bimengine.queryAttribute(bimengine.getAllObjects(), "Name");
 		Map<IfcRoot, Object> conditionFour = bimengine.conditionEqual(allobjnames, "*Level");
 		Map<IfcRoot, List<Object>> idsConditionFour = bimengine.queryAttribute(new ArrayList<IfcRoot>(conditionFour.keySet()), "GlobalId");
-		App.printAfterQuery(bimengine, idsConditionFour);
+		App.printAfterQuery(bimengine, idsConditionFour);*/
 		
 		// Test: QueryRelatedObjects
-		Map<IfcRoot, Object> conditionFive = bimengine.conditionEqual(globalIds, "03hhkFXKT4RPFNu5rDrZPL");
-		Map<IfcRoot, List<Object>> relObjects = bimengine.queryRelatedObjects(new ArrayList<IfcRoot>(conditionFive.keySet()), "all", 3);
-		App.printAfterQuery(bimengine, relObjects);
+		Map<IfcRoot, Object> conditionFive = bimengine.conditionEqual(globalIds, "3nS8Xe8c5BpfdWxU$cBkvz");
+		//App.printAfterCondition(bimengine, conditionFive);
+		Map<IfcRoot, List<Object>> relObjects = bimengine.queryRelatedObjects(new ArrayList<IfcRoot>(conditionFive.keySet()), "IfcBuildingStorey");
+		
+		relObjects.forEach((key, value) -> value.forEach((obj) -> 
+			System.out.println(key.getGlobalId() + " " + ((IfcRoot) obj).getGlobalId())));
 		
 	}
 

@@ -25,10 +25,9 @@ public class QueryAttribute {
 		Map<IfcRoot, List<Object>> result = new HashMap<IfcRoot, List<Object>>();
 		for (IfcRoot object : objects) {
 
-			String canonicalName = object.getClass().getCanonicalName();
 			try {
 				List<Object> resList = new ArrayList<Object>();
-				Class<?> newClass = Class.forName(canonicalName);
+				Class<?> newClass = Class.forName(object.getClass().getCanonicalName());
 				Object newObject = newClass.cast(object);
 				Method getAttribute;
 
@@ -47,8 +46,7 @@ public class QueryAttribute {
 
 				Object ret = getAttribute.invoke(newObject);
 				if (ret instanceof EList<?>)
-					for (Object elem : (EList<?>) ret)
-						resList.add(elem);
+					resList.addAll((EList<?>) ret);
 				else
 					resList.add(ret);
 				

@@ -29,8 +29,8 @@ public class QueryRelatedObjects {
 	public QueryRelatedObjects(IfcRoot ifcRootObject, String type, int maxDepth) {
 		this.ifcRootObject = ifcRootObject;
 		this.type = type + "Impl";
-		this.all = type.equals("all") ? true : false;
-		this.noMaxDepth = maxDepth == -1 ? true : false;
+		this.all = type.equals("all");
+		this.noMaxDepth = maxDepth == -1;
 		this.currentDepth = 0;
 		this.depthIncrease = 1;
 		this.maxDepth = maxDepth;
@@ -39,12 +39,36 @@ public class QueryRelatedObjects {
 		this.queue = new LinkedList<Object>();
 	}
 
+	public void verifyMethod(Method method, Object object) {
+
+		if (method.getName().startsWith("get")
+				&& (method.getReturnType().getSimpleName().startsWith("Ifc")
+						|| method.getReturnType().getSimpleName().startsWith("EList"))
+				&& method.getParameterCount() == 0 && !method.getName().equals("getModel")) {
+
+			try {
+				Object ret = method.invoke(object);
+				if (ret != null) {
+					if (ret instanceof EList<?>)
+						queue.addAll((EList<?>) ret);
+					else
+						queue.add(ret);
+				}
+			} catch (IllegalAccessException e) {
+				// Empty Block
+			} catch (InvocationTargetException e) {
+				// Empty Block
+			}
+		}
+
+	}
+
 	public void visit(Object object) {
 
 		depthIncrease--;
 		if (!nodes.add(object))
 			return;
-
+		
 		if (all || object.getClass().getSimpleName().equals(type)) {
 			result.add(object);
 			if (noMaxDepth) {
@@ -52,37 +76,13 @@ public class QueryRelatedObjects {
 				noMaxDepth = false;
 			}
 		}
-
 		if (noMaxDepth || currentDepth < maxDepth) {
-
 			try {
 				Class<?> newClass = Class.forName(object.getClass().getCanonicalName());
 				Object newObject = newClass.cast(object);
 				Method[] methods = newClass.getMethods();
 				List<Method> methodlist = Arrays.asList(methods);
-
-				methodlist.forEach(method -> {
-					if (method.getName().startsWith("get")
-							&& (method.getReturnType().getSimpleName().startsWith("Ifc")
-									|| method.getReturnType().getSimpleName().startsWith("EList"))
-							&& method.getParameterCount() == 0 && !method.getName().equals("getModel")) {
-						
-						try {
-							Object ret = method.invoke(newObject);
-							if (ret != null) {
-								if (ret instanceof EList<?>)
-									queue.addAll((EList<?>) ret);
-								else
-									queue.add(ret);
-							}
-						} catch (IllegalAccessException e) {
-							// Empty Block
-						} catch (InvocationTargetException e) {
-							// Empty Block
-						}
-					}
-				});
-				
+				methodlist.forEach(method -> verifyMethod(method, newObject));
 			} catch (ClassNotFoundException e) {
 				return;
 			}

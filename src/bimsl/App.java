@@ -14,13 +14,19 @@ public class App {
 		// Empty Block
 	}
 	
-	public static void printAfterQuery(BIMQueryEngine bimengine, Map<IfcRoot, List<Object>> objects) {
+	public static void printObjectsAfterQuery(BIMQueryEngine bimengine, Map<IfcRoot, List<Object>> objects) {
 		System.out.println("------------------------- Result ----------------------");
-		objects.forEach((key, value) -> value.forEach((obj) -> System.out.println(bimengine.querySingleEntityType(key) + " " + obj)));
+		objects.forEach((key, value) -> value.forEach(obj -> System.out.println(key.getGlobalId() + " " + bimengine.querySingleGlobalID((IfcRoot) obj))));
 		System.out.println("-------------------------------------------------------");
 	}
 	
-	public static void printAfterCondition(BIMQueryEngine bimengine, Map<IfcRoot, Object> objects) {
+	public static void printValuesAfterQuery(BIMQueryEngine bimengine, Map<IfcRoot, List<Object>> objects) {
+		System.out.println("------------------------- Result ----------------------");
+		objects.forEach((key, value) -> value.forEach(obj -> System.out.println(bimengine.querySingleEntityType(key) + " " + obj)));
+		System.out.println("-------------------------------------------------------");
+	}
+	
+	public static void printValuesAfterCondition(BIMQueryEngine bimengine, Map<IfcRoot, Object> objects) {
 		System.out.println("------------------------- Result ----------------------");
 		objects.forEach((key, value) -> System.out.println(bimengine.querySingleEntityType(key) + " " + value));
 		System.out.println("-------------------------------------------------------");
@@ -28,51 +34,58 @@ public class App {
 
 	public static void main(String[] args) {
 		
-		System.out.println("Connecting to BIMserver...");
+		// Initialization
 		BIMQueryEngine bimengine = new BIMQueryEngine();
-		System.out.println("Initializing Project...");
-		bimengine.initializeProject("testproj");
-		System.out.println("Refreshing...");
+		//bimengine.addNewProject("testproj1");
+		//bimengine.checkIfcFile("C:/Users/Miguel/Documents/TESE/BIMSL/Diagramas/AC11-Institute-Var-2-IFC.ifc");
+		bimengine.initializeProject("testproj1");
 		bimengine.refreshModel();
-		System.out.println("Querying...");
 		
 		// Examples
+		System.out.println("Running Examples...");
 		
 		// select Obj.EntityType, Obj.Attribute.GlobalId 
 		// from AllObjects 
-		// where Obj.Attribute.GlobalId = 2pkKx0m_bEbfjzzBNbASG_
+		// where Obj.Attribute.GlobalId = 2OU4curhvDMPArGs3c5lc0
 		Map<IfcRoot, List<Object>> globalIds = bimengine.queryAttribute(bimengine.getAllObjects(), "GlobalId");
-		Map<IfcRoot, Object> conditionOne = bimengine.conditionEqual(globalIds, "2pkKx0m_bEbfjzzBNbASG_");
-		App.printAfterCondition(bimengine, conditionOne);
+		Map<IfcRoot, Object> conditionOne = bimengine.conditionEqual(globalIds, "2OU4curhvDMPArGs3c5lc0");
+		App.printValuesAfterCondition(bimengine, conditionOne);
 		
-		// select Obj.EntityType, Obj.Property.MainColor 
+		// select Obj.EntityType, Obj.Property.ThermalTransmittance 
 		// from AllObjects 
-		// where Obj.Attribute.GlobalId = 2pkKx0m_bEbfjzzBNbASG_
-		Map<IfcRoot, List<Object>> colorsTwo = bimengine.queryProperty(new ArrayList<IfcRoot>(conditionOne.keySet()), "MainColor");
-		App.printAfterQuery(bimengine, colorsTwo);
+		// where Obj.Attribute.GlobalId = 2OU4curhvDMPArGs3c5lc0
+		Map<IfcRoot, List<Object>> thermal = bimengine.queryProperty(new ArrayList<IfcRoot>(conditionOne.keySet()), "ThermalTransmittance");
+		App.printValuesAfterQuery(bimengine, thermal);
 
 		// select Obj.EntityType, Obj.Attribute.Name 
 		// from AllObjects 
 		// where Obj.Attribute.GlobalId = 2WnDGvXIP14xQJyJ3RQPXx
 		Map<IfcRoot, Object> conditionThree = bimengine.conditionEqual(globalIds, "2WnDGvXIP14xQJyJ3RQPXx");
 		Map<IfcRoot, List<Object>> objnames = bimengine.queryAttribute(new ArrayList<IfcRoot>(conditionThree.keySet()), "Name");
-		App.printAfterQuery(bimengine, objnames);
+		App.printValuesAfterQuery(bimengine, objnames);
 		
 		// select Obj.EntityType, Obj.Attribute.GlobalId 
 		// from AllObjects 
 		// where Obj.Attribute.Name = *Level
-		/*Map<IfcRoot, List<Object>> allobjnames = bimengine.queryAttribute(bimengine.getAllObjects(), "Name");
+		Map<IfcRoot, List<Object>> allobjnames = bimengine.queryAttribute(bimengine.getAllObjects(), "Name");
 		Map<IfcRoot, Object> conditionFour = bimengine.conditionEqual(allobjnames, "*Level");
 		Map<IfcRoot, List<Object>> idsConditionFour = bimengine.queryAttribute(new ArrayList<IfcRoot>(conditionFour.keySet()), "GlobalId");
-		App.printAfterQuery(bimengine, idsConditionFour);*/
+		App.printValuesAfterQuery(bimengine, idsConditionFour);
 		
-		// Test: QueryRelatedObjects
-		Map<IfcRoot, Object> conditionFive = bimengine.conditionEqual(globalIds, "3nS8Xe8c5BpfdWxU$cBkvz");
-		//App.printAfterCondition(bimengine, conditionFive);
+		// select Obj.EntityType, Obj.Attribute.GlobalId
+		// from AllObjects 
+		// where Obj.EntityType = IfcSensorType
+		
+		//TODO
+		
+		// select Obj1.Attribute.GlobalId (IfcDoor), Obj2.Attribute.GlobalId (IfcBuildingStorey)
+		// from AllObjects
+		// where Obj1.Attribute.GlobalId = 1OWERn04z20wIPbxd7iM$J 
+		// and Obj2.EntityType = IfcBuildingStorey
+		// and Obj2 is directly related with Obj1
+		Map<IfcRoot, Object> conditionFive = bimengine.conditionEqual(globalIds, "1OWERn04z20wIPbxd7iM$J");
 		Map<IfcRoot, List<Object>> relObjects = bimengine.queryRelatedObjects(new ArrayList<IfcRoot>(conditionFive.keySet()), "IfcBuildingStorey");
-		
-		relObjects.forEach((key, value) -> value.forEach((obj) -> 
-			System.out.println(key.getGlobalId() + " " + ((IfcRoot) obj).getGlobalId())));
+		App.printObjectsAfterQuery(bimengine, relObjects);
 		
 	}
 
@@ -81,4 +94,5 @@ public class App {
 // -> queryAttribute pode devolver objecto em vez de String
 // -> query de um objecto que nao existe
 // -> aplicar predicado a > < >= <=
+// -> select allentities for one type
 // -> query devolver mais de 2 coisas: falta processo de merge ou join: considerar adicionar elementos ao final da lista de objects

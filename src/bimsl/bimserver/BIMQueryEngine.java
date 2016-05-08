@@ -42,6 +42,7 @@ public class BIMQueryEngine {
 	private SProject project;
 
 	public BIMQueryEngine() {
+		System.out.println("Connecting to BIMserver...");
 		try {
 			// Home directory definition
 			File home = new File("home");
@@ -80,6 +81,7 @@ public class BIMQueryEngine {
 	}
 
 	public boolean addNewProject(String projectname) {
+		System.out.println("Adding New Project...");
 		try {
 			project = client.getBimsie1ServiceInterface().addProject(projectname, "ifc2x3tc1");
 			poid = project.getOid();
@@ -95,6 +97,7 @@ public class BIMQueryEngine {
 	}
 
 	public boolean checkIfcFile(String fullpath) {
+		System.out.println("Checking IFC File...");
 		try {
 			// Look for a deserializer
 			SDeserializerPluginConfiguration deserializer = client.getBimsie1ServiceInterface()
@@ -113,42 +116,42 @@ public class BIMQueryEngine {
 		}
 		return false;
 	}
-	
+
 	public List<Object> conditionAnd(Map<IfcRoot, Object> leftOperand, Map<IfcRoot, Object> rightOperand) {
 		AndOperator andOperator = new AndOperator(leftOperand, rightOperand);
 		return andOperator.getResult();
 	}
-	
+
 	public Map<IfcRoot, Object> conditionEqual(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
 		EqualOperator equalOperator = new EqualOperator(leftOperand, rightOperand);
 		return equalOperator.getResult();
 	}
-	
+
 	public Map<IfcRoot, Object> conditionGreaterEqual(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
 		GreaterEqualOperator greaterEqualOperator = new GreaterEqualOperator(leftOperand, rightOperand);
 		return greaterEqualOperator.getResult();
 	}
-	
+
 	public Map<IfcRoot, Object> conditionGreater(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
 		GreaterOperator greaterOperator = new GreaterOperator(leftOperand, rightOperand);
 		return greaterOperator.getResult();
 	}
-	
+
 	public Map<IfcRoot, Object> conditionLessEqual(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
 		LessEqualOperator lessEqualOperator = new LessEqualOperator(leftOperand, rightOperand);
 		return lessEqualOperator.getResult();
 	}
-	
+
 	public Map<IfcRoot, Object> conditionLess(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
 		LessOperator lessOperator = new LessOperator(leftOperand, rightOperand);
 		return lessOperator.getResult();
 	}
-	
+
 	public Map<IfcRoot, Object> conditionNotEqual(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
 		NotEqualOperator notEqualOperator = new NotEqualOperator(leftOperand, rightOperand);
 		return notEqualOperator.getResult();
 	}
-	
+
 	public List<Object> conditionOr(Map<IfcRoot, Object> leftOperand, Map<IfcRoot, Object> rightOperand) {
 		OrOperator orOperator = new OrOperator(leftOperand, rightOperand);
 		return orOperator.getResult();
@@ -157,7 +160,7 @@ public class BIMQueryEngine {
 	public List<IfcRoot> getAllObjects() {
 		return allObjects;
 	}
-	
+
 	public List<SProject> getAllProjects() {
 		try {
 			return client.getBimsie1ServiceInterface().getAllProjects(true, true);
@@ -207,17 +210,18 @@ public class BIMQueryEngine {
 		}
 		return null;
 	}
-	
+
 	public long getProjectObjectID() {
 		return poid;
 	}
 
 	public boolean initializeProject(String projectname) {
+		System.out.println("Initializing Project...");
 		project = getProjectByName(projectname);
 		poid = project.getOid();
 		return true;
 	}
-	
+
 	public Map<IfcRoot, List<Object>> queryAttribute(List<IfcRoot> objects, String attribute) {
 		QueryAttribute query = new QueryAttribute(objects, attribute);
 		return query.getResult();
@@ -228,11 +232,22 @@ public class BIMQueryEngine {
 		return query.getResult();
 	}
 	
+	public Map<IfcRoot, String> queryGlobalID(List<IfcRoot> objects) {
+		QueryGlobalID query = new QueryGlobalID(objects);
+		return query.getResult();
+	}
+
 	public Map<IfcRoot, List<Object>> queryProperty(List<IfcRoot> objects, String property) {
 		QueryProperty query = new QueryProperty(objects, property);
 		return query.getResult();
 	}
 	
+	public Map<IfcRoot, Object> queryObject(List<String> globalIDs) {
+		Map<IfcRoot, Object> result = new HashMap<IfcRoot, Object>();
+		globalIDs.forEach(id -> result.put(model.getByGuid(id), id));
+		return result;
+	}
+
 	public Map<IfcRoot, List<Object>> queryRelatedObjects(List<IfcRoot> objects, String type) {
 		Map<IfcRoot, List<Object>> result = new HashMap<IfcRoot, List<Object>>();
 		for (IfcRoot object : objects) {
@@ -241,7 +256,7 @@ public class BIMQueryEngine {
 		}
 		return result;
 	}
-	
+
 	public Map<IfcRoot, List<Object>> queryRelatedObjectsWithDepth(List<IfcRoot> objects, String type, int depth) {
 		Map<IfcRoot, List<Object>> result = new HashMap<IfcRoot, List<Object>>();
 		for (IfcRoot object : objects) {
@@ -250,13 +265,25 @@ public class BIMQueryEngine {
 		}
 		return result;
 	}
-	
+
 	public String querySingleEntityType(IfcRoot entity) {
 		QueryEntityType query = new QueryEntityType(entity);
 		return query.getResult().get(0);
 	}
+	
+	public String querySingleGlobalID(IfcRoot object) {
+		QueryGlobalID query = new QueryGlobalID(object);
+		return query.getResult().get(object);
+	}
+	
+	public Map<IfcRoot, Object> querySingleObject(String globalID) {
+		Map<IfcRoot, Object> result = new HashMap<IfcRoot, Object>();
+		result.put(model.getByGuid(globalID), globalID);
+		return result;
+	}
 
 	public boolean refreshProject() {
+		System.out.println("Refreshing Project...");
 		try {
 			project = client.getBimsie1ServiceInterface().getProjectByPoid(poid);
 			return refreshModel();
@@ -271,6 +298,7 @@ public class BIMQueryEngine {
 	}
 
 	public boolean refreshModel() {
+		System.out.println("Refreshing Model...");
 		try {
 			// Load model without lazy loading (complete model at once)
 			model = client.getModel(project, project.getLastRevisionId(), true, false);

@@ -32,10 +32,10 @@ public class NotEqualOperator {
 							if (object.equals(Double.parseDouble(rightOperand)))
 								break;
 						} else if (className.equals("String")) {
+							if (((String) object).equals(rightOperand))
+								break;
 							String regex = rightOperand;
-							regex = regex.replace(".", "\\.");
-							regex = regex.replace("*", ".*");
-							regex = regex.replace("?", ".?");
+							regex = regex.replace(".", "\\.").replace("*", ".*").replace("?", ".?");
 							if (((String) object).matches(regex))
 								break;
 						}

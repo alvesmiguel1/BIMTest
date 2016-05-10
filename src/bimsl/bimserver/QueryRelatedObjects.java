@@ -2,7 +2,6 @@ package bimsl.bimserver;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -22,7 +21,7 @@ public class QueryRelatedObjects {
 	private int currentDepth;
 	private int depthIncrease;
 	private int maxDepth;
-	private List<Object> result;
+	private Set<IfcRoot> result;
 	private Queue<Object> queue;
 	private Set<Object> nodes;
 
@@ -35,7 +34,7 @@ public class QueryRelatedObjects {
 		this.depthIncrease = 1;
 		this.maxDepth = maxDepth;
 		this.nodes = new HashSet<Object>();
-		this.result = new ArrayList<Object>();
+		this.result = new HashSet<IfcRoot>();
 		this.queue = new LinkedList<Object>();
 	}
 
@@ -70,7 +69,7 @@ public class QueryRelatedObjects {
 			return;
 		
 		if (all || object.getClass().getSimpleName().equals(type)) {
-			result.add(object);
+			result.add((IfcRoot) object);
 			if (noMaxDepth) {
 				maxDepth = currentDepth;
 				noMaxDepth = false;
@@ -90,7 +89,7 @@ public class QueryRelatedObjects {
 
 	}
 
-	public List<Object> getResult() {
+	public Set<IfcRoot> getResult() {
 
 		visit(ifcRootObject);
 		while (!queue.isEmpty()) {

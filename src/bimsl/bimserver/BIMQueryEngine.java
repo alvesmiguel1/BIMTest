@@ -2,9 +2,12 @@ package bimsl.bimserver;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.bimserver.client.json.JsonBimServerClientFactory;
 import org.bimserver.emf.IfcModelInterface;
@@ -37,7 +40,7 @@ public class BIMQueryEngine {
 
 	private BimServerClientInterface client;
 	private IfcModelInterface model;
-	private List<IfcRoot> allObjects;
+	private Set<IfcRoot> allObjects;
 	private long poid;
 	private SProject project;
 
@@ -117,47 +120,47 @@ public class BIMQueryEngine {
 		return false;
 	}
 
-	public List<Object> conditionAnd(Map<IfcRoot, Object> leftOperand, Map<IfcRoot, Object> rightOperand) {
+	public Set<IfcRoot> conditionAnd(Set<IfcRoot> leftOperand, Set<IfcRoot> rightOperand) {
 		AndOperator andOperator = new AndOperator(leftOperand, rightOperand);
 		return andOperator.getResult();
 	}
 
-	public Map<IfcRoot, Object> conditionEqual(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
+	public Set<IfcRoot> conditionEqual(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
 		EqualOperator equalOperator = new EqualOperator(leftOperand, rightOperand);
 		return equalOperator.getResult();
 	}
 
-	public Map<IfcRoot, Object> conditionGreaterEqual(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
+	public Set<IfcRoot> conditionGreaterEqual(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
 		GreaterEqualOperator greaterEqualOperator = new GreaterEqualOperator(leftOperand, rightOperand);
 		return greaterEqualOperator.getResult();
 	}
 
-	public Map<IfcRoot, Object> conditionGreater(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
+	public Set<IfcRoot> conditionGreater(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
 		GreaterOperator greaterOperator = new GreaterOperator(leftOperand, rightOperand);
 		return greaterOperator.getResult();
 	}
 
-	public Map<IfcRoot, Object> conditionLessEqual(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
+	public Set<IfcRoot> conditionLessEqual(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
 		LessEqualOperator lessEqualOperator = new LessEqualOperator(leftOperand, rightOperand);
 		return lessEqualOperator.getResult();
 	}
 
-	public Map<IfcRoot, Object> conditionLess(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
+	public Set<IfcRoot> conditionLess(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
 		LessOperator lessOperator = new LessOperator(leftOperand, rightOperand);
 		return lessOperator.getResult();
 	}
 
-	public Map<IfcRoot, Object> conditionNotEqual(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
+	public Set<IfcRoot> conditionNotEqual(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
 		NotEqualOperator notEqualOperator = new NotEqualOperator(leftOperand, rightOperand);
 		return notEqualOperator.getResult();
 	}
 
-	public List<Object> conditionOr(Map<IfcRoot, Object> leftOperand, Map<IfcRoot, Object> rightOperand) {
+	public Set<IfcRoot> conditionOr(Set<IfcRoot> leftOperand, Set<IfcRoot> rightOperand) {
 		OrOperator orOperator = new OrOperator(leftOperand, rightOperand);
 		return orOperator.getResult();
 	}
 
-	public List<IfcRoot> getAllObjects() {
+	public Set<IfcRoot> getAllObjects() {
 		return allObjects;
 	}
 
@@ -222,64 +225,94 @@ public class BIMQueryEngine {
 		return true;
 	}
 
-	public Map<IfcRoot, List<Object>> queryAttribute(List<IfcRoot> objects, String attribute) {
+	public Map<IfcRoot, List<Object>> queryAttribute(Set<IfcRoot> objects, String attribute) {
 		QueryAttribute query = new QueryAttribute(objects, attribute);
 		return query.getResult();
 	}
-	
-	public List<String> queryEntityType(List<IfcRoot> entities) {
+
+	public Map<IfcRoot, List<Object>> queryAttributeSingle(IfcRoot object, String attribute) {
+		Set<IfcRoot> objects = new HashSet<IfcRoot>();
+		objects.add(object);
+		QueryAttribute query = new QueryAttribute(objects, attribute);
+		return query.getResult();
+	}
+
+	@SuppressWarnings("unchecked")
+	public Set<IfcRoot> queryEntity(String entity) {
+		Set<IfcRoot> result = new HashSet<IfcRoot>();
+		try {
+			Class<IfcRoot> cls = IfcRoot.class;
+			Class<?> entityClass = Class.forName("org.bimserver.models.ifc2x3tc1." + entity);
+			if (cls.isAssignableFrom(entityClass))
+				result.addAll(model.getAllWithSubTypes((Class<? extends IfcRoot>) entityClass));
+		} catch (ClassNotFoundException e) {
+			// Empty Block
+		}
+		return result;
+	}
+
+	public Map<IfcRoot, List<Object>> queryEntityType(Set<IfcRoot> entities) {
 		QueryEntityType query = new QueryEntityType(entities);
 		return query.getResult();
 	}
-	
-	public Map<IfcRoot, String> queryGlobalID(List<IfcRoot> objects) {
+
+	public Map<IfcRoot, List<Object>> queryEntityTypeSingle(IfcRoot entity) {
+		Set<IfcRoot> entities = new HashSet<IfcRoot>();
+		entities.add(entity);
+		QueryEntityType query = new QueryEntityType(entities);
+		return query.getResult();
+	}
+
+	public Map<IfcRoot, List<Object>> queryGlobalID(Set<IfcRoot> objects) {
 		QueryGlobalID query = new QueryGlobalID(objects);
 		return query.getResult();
 	}
 
-	public Map<IfcRoot, List<Object>> queryProperty(List<IfcRoot> objects, String property) {
+	public Map<IfcRoot, List<Object>> queryGlobalIDSingle(IfcRoot object) {
+		Set<IfcRoot> objects = new HashSet<IfcRoot>();
+		objects.add(object);
+		QueryGlobalID query = new QueryGlobalID(objects);
+		return query.getResult();
+	}
+
+	public Map<IfcRoot, List<Object>> queryProperty(Set<IfcRoot> objects, String property) {
 		QueryProperty query = new QueryProperty(objects, property);
 		return query.getResult();
 	}
-	
-	public Map<IfcRoot, Object> queryObject(List<String> globalIDs) {
-		Map<IfcRoot, Object> result = new HashMap<IfcRoot, Object>();
-		globalIDs.forEach(id -> result.put(model.getByGuid(id), id));
-		return result;
+
+	public Map<IfcRoot, List<Object>> queryPropertySingle(IfcRoot object, String property) {
+		Set<IfcRoot> objects = new HashSet<IfcRoot>();
+		objects.add(object);
+		QueryProperty query = new QueryProperty(objects, property);
+		return query.getResult();
 	}
 
-	public Map<IfcRoot, List<Object>> queryRelatedObjects(List<IfcRoot> objects, String type) {
+	public Map<IfcRoot, List<Object>> queryObject(Set<String> globalIDs) {
 		Map<IfcRoot, List<Object>> result = new HashMap<IfcRoot, List<Object>>();
-		for (IfcRoot object : objects) {
-			QueryRelatedObjects query = new QueryRelatedObjects(object, type, -1);
-			result.put(object, query.getResult());
-		}
+		globalIDs.forEach(globalID -> {
+			IfcRoot object = model.getByGuid(globalID);
+			if (object != null)
+				result.put(object, Arrays.asList(globalID));
+		});
 		return result;
 	}
 
-	public Map<IfcRoot, List<Object>> queryRelatedObjectsWithDepth(List<IfcRoot> objects, String type, int depth) {
+	public Map<IfcRoot, List<Object>> queryObjectSingle(String globalID) {
 		Map<IfcRoot, List<Object>> result = new HashMap<IfcRoot, List<Object>>();
-		for (IfcRoot object : objects) {
-			QueryRelatedObjects query = new QueryRelatedObjects(object, type, depth);
-			result.put(object, query.getResult());
-		}
+		IfcRoot object = model.getByGuid(globalID);
+		if (object != null)
+			result.put(object, Arrays.asList(globalID));
 		return result;
 	}
 
-	public String querySingleEntityType(IfcRoot entity) {
-		QueryEntityType query = new QueryEntityType(entity);
-		return query.getResult().get(0);
+	public Set<IfcRoot> queryRelatedObjects(IfcRoot object, String type) {
+		QueryRelatedObjects query = new QueryRelatedObjects(object, type, -1);
+		return query.getResult();
 	}
-	
-	public String querySingleGlobalID(IfcRoot object) {
-		QueryGlobalID query = new QueryGlobalID(object);
-		return query.getResult().get(object);
-	}
-	
-	public Map<IfcRoot, Object> querySingleObject(String globalID) {
-		Map<IfcRoot, Object> result = new HashMap<IfcRoot, Object>();
-		result.put(model.getByGuid(globalID), globalID);
-		return result;
+
+	public Set<IfcRoot> queryRelatedObjectsWithDepth(IfcRoot object, String type, int depth) {
+		QueryRelatedObjects query = new QueryRelatedObjects(object, type, depth);
+		return query.getResult();
 	}
 
 	public boolean refreshProject() {
@@ -302,7 +335,7 @@ public class BIMQueryEngine {
 		try {
 			// Load model without lazy loading (complete model at once)
 			model = client.getModel(project, project.getLastRevisionId(), true, false);
-			allObjects = model.getAllWithSubTypes(IfcRoot.class);
+			allObjects = new HashSet<IfcRoot>(model.getAllWithSubTypes(IfcRoot.class));
 			return true;
 		} catch (UserException e) {
 			e.printStackTrace();
@@ -314,6 +347,12 @@ public class BIMQueryEngine {
 			e.printStackTrace();
 		}
 		return false;
+	}
+
+	public Map<IfcRoot, List<Object>> relateObjects(List<Object> objects, Set<IfcRoot> related) {
+		Map<IfcRoot, List<Object>> result = new HashMap<IfcRoot, List<Object>>();
+		related.forEach(key -> result.put(key, objects));
+		return result;
 	}
 
 }

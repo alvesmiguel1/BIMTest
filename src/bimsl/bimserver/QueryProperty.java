@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.bimserver.models.ifc2x3tc1.IfcComplexProperty;
 import org.bimserver.models.ifc2x3tc1.IfcObject;
@@ -16,119 +17,73 @@ import org.bimserver.models.ifc2x3tc1.IfcPropertySingleValue;
 import org.bimserver.models.ifc2x3tc1.IfcRelDefines;
 import org.bimserver.models.ifc2x3tc1.IfcRelDefinesByProperties;
 import org.bimserver.models.ifc2x3tc1.IfcRoot;
-import org.eclipse.emf.common.util.EList;
 
 public class QueryProperty {
 
-	private final List<IfcRoot> objects;
+	private final Set<IfcRoot> objects;
 	private final String property;
+	private Map<IfcRoot, List<Object>> result;
 
-	public QueryProperty(List<IfcRoot> objects, String property) {
+	public QueryProperty(Set<IfcRoot> objects, String property) {
 		this.objects = objects;
 		this.property = property;
 	}
 
-	public Map<IfcRoot, List<Object>> getResult() {
+	public Object checkProperty(IfcPropertySingleValue ifcProperty) {
 
-		Map<IfcRoot, List<Object>> result = new HashMap<IfcRoot, List<Object>>();
-		for (IfcRoot object : objects) {
-			
-			List<Object> foundProperties = new ArrayList<Object>();
-			if (object instanceof IfcObject) {
+		Object ret = null;
+		try {
+			Class<?> propClass = ifcProperty.getNominalValue().getClass();
+			Class<?> newClass = Class.forName(propClass.getCanonicalName());
+			Object newObject = newClass.cast(ifcProperty.getNominalValue());
+			String simpleName = propClass.getSimpleName();
 
-				EList<IfcRelDefines> ifcRelDefinesList = ((IfcObject) object).getIsDefinedBy();
-				for (IfcRelDefines ifcRelDefines : ifcRelDefinesList) {
+			if (simpleName.equals("Ifc2x3tc1Package") || simpleName.equals("Ifc2x3tc1PackageImpl"))
+				ret = newObject;
+			else {
+				Method getWrappedValue = newClass.getMethod("getWrappedValue");
+				Object wrappedValue = getWrappedValue.invoke(newObject);
+				ret = wrappedValue;
+			}
+		} catch (ClassNotFoundException e) {
+			// Empty Block
+		} catch (NoSuchMethodException e) {
+			// Empty Block
+		} catch (SecurityException e) {
+			// Empty Block
+		} catch (IllegalAccessException e) {
+			// Empty Block
+		} catch (IllegalArgumentException e) {
+			// Empty Block
+		} catch (InvocationTargetException e) {
+			// Empty Block
+		}
+		return ret;
 
-					if (ifcRelDefines.eClass().getName().equals("IfcRelDefinesByProperties")) {
+	}
 
-						IfcPropertySetDefinition ifcPropertySetDefinition = ((IfcRelDefinesByProperties) ifcRelDefines)
-								.getRelatingPropertyDefinition();
-						if (ifcPropertySetDefinition.eClass().getName().equals("IfcPropertySet")) {
+	public void getProperty(IfcRoot object) {
 
-							EList<IfcProperty> ifcPropertyList = ((IfcPropertySet) ifcPropertySetDefinition)
-									.getHasProperties();
-							for (IfcProperty ifcProperty : ifcPropertyList) {
-
-								if (ifcProperty.getName().equals(property)) {
-
-									String propertyClassName = ifcProperty.getClass().getSimpleName();
-									if (propertyClassName.equals("IfcPropertySingleValueImpl")) {
-
-										String simpleName = ((IfcPropertySingleValue) ifcProperty).getNominalValue()
-												.getClass().getSimpleName();
-										String canonicalName = ((IfcPropertySingleValue) ifcProperty).getNominalValue()
-												.getClass().getCanonicalName();
-										try {
-											Class<?> newClass = Class.forName(canonicalName);
-											Object newObject = newClass
-													.cast(((IfcPropertySingleValue) ifcProperty).getNominalValue());
-
-											if (simpleName.equals("Ifc2x3tc1Package")
-													|| simpleName.equals("Ifc2x3tc1PackageImpl"))
-												foundProperties.add(newObject);
-
-											else {
-												Method getWrappedValue = newClass.getMethod("getWrappedValue");
-												Object wrappedValue = getWrappedValue.invoke(newObject);
-												foundProperties.add(wrappedValue);
-											}
-										} catch (ClassNotFoundException e) {
-											e.printStackTrace();
-										} catch (NoSuchMethodException e) {
-											e.printStackTrace();
-										} catch (SecurityException e) {
-											e.printStackTrace();
-										} catch (IllegalAccessException e) {
-											e.printStackTrace();
-										} catch (IllegalArgumentException e) {
-											e.printStackTrace();
-										} catch (InvocationTargetException e) {
-											e.printStackTrace();
-										}
-
-									}
-
-									else if (propertyClassName.equals("IfcComplexPropertyImpl")) {
-
-										EList<IfcProperty> ifcComplexPropertyList = ((IfcComplexProperty) ifcProperty)
-												.getHasProperties();
-
-										for (IfcProperty ifcComplexProperty : ifcComplexPropertyList) {
-
-											String simpleName = ((IfcPropertySingleValue) ifcComplexProperty)
-													.getNominalValue().getClass().getSimpleName();
-											String canonicalName = ((IfcPropertySingleValue) ifcComplexProperty)
-													.getNominalValue().getClass().getCanonicalName();
-
-											try {
-												Class<?> newClass = Class.forName(canonicalName);
-												Object newObject = newClass
-														.cast(((IfcPropertySingleValue) ifcComplexProperty)
-																.getNominalValue());
-
-												if (simpleName.equals("Ifc2x3tc1Package")
-														|| simpleName.equals("Ifc2x3tc1PackageImpl"))
-													foundProperties.add(newObject);
-
-												else {
-													Method getWrappedValue = newClass.getMethod("getWrappedValue");
-													Object wrappedValue = getWrappedValue.invoke(newObject);
-													foundProperties.add(wrappedValue);
-												}
-											} catch (ClassNotFoundException e) {
-												e.printStackTrace();
-											} catch (NoSuchMethodException e) {
-												e.printStackTrace();
-											} catch (SecurityException e) {
-												e.printStackTrace();
-											} catch (IllegalAccessException e) {
-												e.printStackTrace();
-											} catch (IllegalArgumentException e) {
-												e.printStackTrace();
-											} catch (InvocationTargetException e) {
-												e.printStackTrace();
-											}
-										}
+		List<Object> resList = new ArrayList<Object>();
+		if (object instanceof IfcObject) {
+			for (IfcRelDefines ifcRelDefines : ((IfcObject) object).getIsDefinedBy()) {
+				if (ifcRelDefines.eClass().getName().equals("IfcRelDefinesByProperties")) {
+					IfcPropertySetDefinition ifcPropertySetDefinition = ((IfcRelDefinesByProperties) ifcRelDefines)
+							.getRelatingPropertyDefinition();
+					if (ifcPropertySetDefinition.eClass().getName().equals("IfcPropertySet")) {
+						for (IfcProperty ifcProperty : ((IfcPropertySet) ifcPropertySetDefinition).getHasProperties()) {
+							if (ifcProperty.getName().equals(property)) {
+								String propertyClassName = ifcProperty.getClass().getSimpleName();
+								if (propertyClassName.equals("IfcPropertySingleValueImpl")) {
+									Object ret = checkProperty((IfcPropertySingleValue) ifcProperty);
+									if (ret != null)
+										resList.add(ret);
+								} else if (propertyClassName.equals("IfcComplexPropertyImpl")) {
+									for (IfcProperty ifcComplexProperty : ((IfcComplexProperty) ifcProperty)
+											.getHasProperties()) {
+										Object complexRet = checkProperty((IfcPropertySingleValue) ifcComplexProperty);
+										if (complexRet != null)
+											resList.add(complexRet);
 									}
 								}
 							}
@@ -136,19 +91,17 @@ public class QueryProperty {
 					}
 				}
 			}
-			result.put(object, foundProperties);
 		}
-		return result;
+		result.put(object, resList);
+
 	}
 
-	/*
-	 * public static List<String> getAttributes(Customer c) { return
-	 * Arrays.asList(c.getName(), c.getStreet(), c.getCity()); }
-	 * 
-	 * public static void main(String[] args) { List<Customer> persons =
-	 * getCustomers(); Map<Customer, List<String>> map = persons.stream()
-	 * .collect(Collectors.toMap(Function.identity(), App::getAttributes));
-	 * System.out.println(map); }
-	 */
+	public Map<IfcRoot, List<Object>> getResult() {
+
+		result = new HashMap<IfcRoot, List<Object>>();
+		objects.forEach(object -> getProperty(object));
+		return result;
+
+	}
 
 }

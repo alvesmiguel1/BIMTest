@@ -1,8 +1,9 @@
 package bimsl.bimserver.operators;
 
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.bimserver.models.ifc2x3tc1.IfcRoot;
 
@@ -10,41 +11,38 @@ public class NotEqualOperator {
 
 	private final Map<IfcRoot, List<Object>> leftOperand;
 	private final String rightOperand;
+	private Set<IfcRoot> result;
 
 	public NotEqualOperator(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
 		this.leftOperand = leftOperand;
 		this.rightOperand = rightOperand;
 	}
+	
+	public boolean checkForDouble(Object value) {
+		
+		return value.getClass().getSimpleName().equals("Double")
+				&& ((Double) value).equals(Double.parseDouble(rightOperand));
+		
+	}
+	
+	public boolean checkForString(Object value) {
+		
+		return value.getClass().getSimpleName().equals("String") && (((String) value).equals(rightOperand)
+				|| ((String) value).matches(rightOperand.replace(".", "\\.").replace("*", ".*").replace("?", ".?")));
+		
+	}
+	
+	public void checkEntry(IfcRoot key, List<Object> values) {
+		
+		if (!values.stream().anyMatch(value -> checkForString(value) || checkForDouble(value)))
+			result.add(key);
+		
+	}
 
-	public Map<IfcRoot, Object> getResult() {
+	public Set<IfcRoot> getResult() {
 
-		Map<IfcRoot, Object> result = new HashMap<IfcRoot, Object>();
-		for (Map.Entry<IfcRoot, List<Object>> entry : leftOperand.entrySet()) {
-			IfcRoot key = entry.getKey();
-			List<Object> values = entry.getValue();
-			if (!values.isEmpty()) {
-				int max = values.size() - 1;
-				for (int i = 0; i <= max; i++) {
-					Object object = values.get(i);
-					if (object != null) {
-						String className = object.getClass().getSimpleName();
-						if (className.equals("Double")) {
-							if (object.equals(Double.parseDouble(rightOperand)))
-								break;
-						} else if (className.equals("String")) {
-							if (((String) object).equals(rightOperand))
-								break;
-							String regex = rightOperand;
-							regex = regex.replace(".", "\\.").replace("*", ".*").replace("?", ".?");
-							if (((String) object).matches(regex))
-								break;
-						}
-					} else if (i == max)
-						result.put(key, object);
-				}
-			} else
-				result.put(key, null);
-		}
+		result = new HashSet<IfcRoot>();
+		leftOperand.forEach((key, values) -> checkEntry(key, values));
 		return result;
 
 	}

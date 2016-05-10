@@ -1,8 +1,9 @@
 package bimsl.bimserver.operators;
 
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.bimserver.models.ifc2x3tc1.IfcRoot;
 
@@ -10,34 +11,25 @@ public class LessOperator {
 
 	private final Map<IfcRoot, List<Object>> leftOperand;
 	private final String rightOperand;
+	private Set<IfcRoot> result;
 
 	public LessOperator(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
 		this.leftOperand = leftOperand;
 		this.rightOperand = rightOperand;
 	}
 
-	public Map<IfcRoot, Object> getResult() {
+	public void checkEntry(IfcRoot key, List<Object> values) {
 
-		Map<IfcRoot, Object> result = new HashMap<IfcRoot, Object>();
-		for (Map.Entry<IfcRoot, List<Object>> entry : leftOperand.entrySet()) {
-			IfcRoot key = entry.getKey();
-			List<Object> values = entry.getValue();
-			if (!values.isEmpty()) {
-				int size = values.size();
-				for (int i = 0; i < size; i++) {
-					Object object = values.get(i);
-					if (object != null) {
-						String className = object.getClass().getSimpleName();
-						if (className.equals("Double")) {
-							if (Double.compare((Double) object, Double.parseDouble(rightOperand)) < 0) {
-								result.put(key, object);
-								break;
-							}
-						}
-					}
-				}
-			}
-		}
+		if (values.stream().anyMatch(value -> value.getClass().getSimpleName().equals("Double")
+				&& Double.compare((Double) value, Double.parseDouble(rightOperand)) < 0))
+			result.add(key);
+
+	}
+
+	public Set<IfcRoot> getResult() {
+
+		result = new HashSet<IfcRoot>();
+		leftOperand.forEach((key, values) -> checkEntry(key, values));
 		return result;
 
 	}

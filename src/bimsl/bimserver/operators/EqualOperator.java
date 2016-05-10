@@ -1,8 +1,9 @@
 package bimsl.bimserver.operators;
 
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.bimserver.models.ifc2x3tc1.IfcRoot;
 
@@ -10,45 +11,38 @@ public class EqualOperator {
 
 	private final Map<IfcRoot, List<Object>> leftOperand;
 	private final String rightOperand;
+	private Set<IfcRoot> result;
 
 	public EqualOperator(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
 		this.leftOperand = leftOperand;
 		this.rightOperand = rightOperand;
 	}
 
-	public Map<IfcRoot, Object> getResult() {
+	public boolean checkForDouble(Object value) {
 
-		Map<IfcRoot, Object> result = new HashMap<IfcRoot, Object>();
-		for (Map.Entry<IfcRoot, List<Object>> entry : leftOperand.entrySet()) {
-			IfcRoot key = entry.getKey();
-			List<Object> values = entry.getValue();
-			if (!values.isEmpty()) {
-				int size = values.size();
-				for (int i = 0; i < size; i++) {
-					Object object = values.get(i);
-					if (object != null) {
-						String className = object.getClass().getSimpleName();
-						if (className.equals("Double")) {
-							if (object.equals(Double.parseDouble(rightOperand))) {
-								result.put(key, object);
-								break;
-							}
-						} else if (className.equals("String")) {
-							if (((String) object).equals(rightOperand)) {
-								result.put(key, object);
-								break;
-							}
-							String regex = rightOperand;
-							regex = regex.replace(".", "\\.").replace("*", ".*").replace("?", ".?");
-							if (((String) object).matches(regex)) {
-								result.put(key, object);
-								break;
-							}
-						}
-					}
-				}
-			}
-		}
+		return value.getClass().getSimpleName().equals("Double")
+				&& ((Double) value).equals(Double.parseDouble(rightOperand));
+
+	}
+
+	public boolean checkForString(Object value) {
+
+		return value.getClass().getSimpleName().equals("String") && (((String) value).equals(rightOperand)
+				|| ((String) value).matches(rightOperand.replace(".", "\\.").replace("*", ".*").replace("?", ".?")));
+
+	}
+
+	public void checkEntry(IfcRoot key, List<Object> values) {
+
+		if (values.stream().anyMatch(value -> checkForString(value) || checkForDouble(value)))
+			result.add(key);
+
+	}
+
+	public Set<IfcRoot> getResult() {
+
+		result = new HashSet<IfcRoot>();
+		leftOperand.forEach((key, values) -> checkEntry(key, values));
 		return result;
 
 	}

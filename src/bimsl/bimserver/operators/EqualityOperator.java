@@ -7,15 +7,17 @@ import java.util.Set;
 
 import org.bimserver.models.ifc2x3tc1.IfcRoot;
 
-public class EqualOperator {
+public class EqualityOperator {
 
+	private final boolean operation; /** = (true) or != (false) */
 	private final Map<IfcRoot, List<Object>> leftOperand;
 	private final String rightOperand;
 	private Set<IfcRoot> result;
 
-	public EqualOperator(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
+	public EqualityOperator(Map<IfcRoot, List<Object>> leftOperand, String rightOperand, boolean operation) {
 		this.leftOperand = leftOperand;
 		this.rightOperand = rightOperand;
+		this.operation = operation;
 	}
 
 	public boolean checkForDouble(Object value) {
@@ -34,7 +36,7 @@ public class EqualOperator {
 
 	public void checkEntry(IfcRoot key, List<Object> values) {
 
-		if (values.stream().anyMatch(value -> checkForString(value) || checkForDouble(value)))
+		if (values.stream().anyMatch(value -> checkForString(value) || checkForDouble(value)) == operation)
 			result.add(key);
 
 	}

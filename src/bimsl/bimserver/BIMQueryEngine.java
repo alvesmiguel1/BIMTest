@@ -1,13 +1,19 @@
 package bimsl.bimserver;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
+import java.util.function.IntPredicate;
 
 import org.bimserver.client.json.JsonBimServerClientFactory;
 import org.bimserver.emf.IfcModelInterface;
@@ -26,15 +32,22 @@ import org.bimserver.shared.UsernamePasswordAuthenticationInfo;
 import org.bimserver.shared.exceptions.ServerException;
 import org.bimserver.shared.exceptions.ServiceException;
 import org.bimserver.shared.exceptions.UserException;
+import org.eclipse.emf.ecore.EClass;
 
+import bimsl.bimserver.exception.BIMServerConnectionException;
+import bimsl.bimserver.exception.ModelRefreshException;
+import bimsl.bimserver.exception.ProjectAddException;
+import bimsl.bimserver.exception.ProjectAlreadyExistsException;
+import bimsl.bimserver.exception.ProjectCheckException;
+import bimsl.bimserver.exception.ProjectGetException;
+import bimsl.bimserver.exception.ProjectNotFoundException;
+import bimsl.bimserver.exception.ProjectRefreshException;
+import bimsl.bimserver.exception.ProjectRemoveException;
+import bimsl.bimserver.exception.PropertiesLoadingException;
 import bimsl.bimserver.operators.AndOperator;
-import bimsl.bimserver.operators.EqualOperator;
-import bimsl.bimserver.operators.GreaterEqualOperator;
-import bimsl.bimserver.operators.GreaterOperator;
-import bimsl.bimserver.operators.LessEqualOperator;
-import bimsl.bimserver.operators.LessOperator;
-import bimsl.bimserver.operators.NotEqualOperator;
+import bimsl.bimserver.operators.EqualityOperator;
 import bimsl.bimserver.operators.OrOperator;
+import bimsl.bimserver.operators.RelationalOperator;
 
 public class BIMQueryEngine {
 
@@ -44,9 +57,19 @@ public class BIMQueryEngine {
 	private long poid;
 	private SProject project;
 
-	public BIMQueryEngine() {
-		System.out.println("Connecting to BIMserver...");
+	public BIMQueryEngine() throws BIMServerConnectionException, PropertiesLoadingException {
+
 		try {
+			System.out.println("Loading properties...");
+
+			// Property loading process
+			Properties props = new Properties();
+			InputStream input = new FileInputStream("conf/bimserver.properties");
+			props.load(input);
+			input.close();
+
+			System.out.println("Connecting to BIMserver...");
+
 			// Home directory definition
 			File home = new File("home");
 			if (!home.exists()) {
@@ -69,55 +92,58 @@ public class BIMQueryEngine {
 			metaDataManager.init();
 
 			// Create a factory for BimServerClients, connect via JSON
-			BimServerClientFactory factory = new JsonBimServerClientFactory(metaDataManager, "http://localhost:8080");
+			BimServerClientFactory factory = new JsonBimServerClientFactory(metaDataManager,
+					"http://localhost:" + props.getProperty("port"));
 
 			// Create a new client, with given authorization
-			client = factory.create(new UsernamePasswordAuthenticationInfo("admin@bimserver.org", "admin"));
+			client = factory.create(new UsernamePasswordAuthenticationInfo(props.getProperty("username"),
+					props.getProperty("password")));
 
 		} catch (PluginException e) {
-			e.printStackTrace();
+			throw new BIMServerConnectionException();
 		} catch (ServiceException e) {
-			e.printStackTrace();
+			throw new BIMServerConnectionException();
 		} catch (ChannelConnectionException e) {
-			e.printStackTrace();
+			throw new BIMServerConnectionException();
+		} catch (FileNotFoundException e) {
+			throw new PropertiesLoadingException();
+		} catch (IOException e) {
+			throw new PropertiesLoadingException();
 		}
 	}
 
-	public boolean addNewProject(String projectname) {
-		System.out.println("Adding New Project...");
+	public void addNewProject(String projectname) throws ProjectAddException, ProjectAlreadyExistsException {
+		System.out.println("Adding a new project...");
 		try {
 			project = client.getBimsie1ServiceInterface().addProject(projectname, "ifc2x3tc1");
 			poid = project.getOid();
-			return true;
 		} catch (ServerException e) {
-			e.printStackTrace();
+			throw new ProjectAddException(projectname);
 		} catch (UserException e) {
-			e.printStackTrace();
+			throw new ProjectAlreadyExistsException(projectname);
 		} catch (PublicInterfaceNotFoundException e) {
-			e.printStackTrace();
+			throw new ProjectAddException(projectname);
 		}
-		return false;
 	}
 
-	public boolean checkIfcFile(String fullpath) {
-		System.out.println("Checking IFC File...");
+	public void checkIfcFile(String filename) throws ProjectCheckException, ProjectRefreshException, ModelRefreshException {
+		System.out.println("Checking IFC file...");
 		try {
 			// Look for a deserializer
 			SDeserializerPluginConfiguration deserializer = client.getBimsie1ServiceInterface()
 					.getSuggestedDeserializerForExtension("ifc", poid);
 			// Checking IFC file
-			client.checkin(poid, project.getName(), deserializer.getOid(), false, true, new File(fullpath));
-			return refreshProject();
+			client.checkin(poid, project.getName(), deserializer.getOid(), false, true, new File("conf/" + filename));
+			refreshProject();
 		} catch (UserException e) {
-			e.printStackTrace();
+			throw new ProjectCheckException(filename);
 		} catch (ServerException e) {
-			e.printStackTrace();
+			throw new ProjectCheckException(filename);
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw new ProjectCheckException(filename);
 		} catch (PublicInterfaceNotFoundException e) {
-			e.printStackTrace();
+			throw new ProjectCheckException(filename);
 		}
-		return false;
 	}
 
 	public Set<IfcRoot> conditionAnd(Set<IfcRoot> leftOperand, Set<IfcRoot> rightOperand) {
@@ -126,32 +152,36 @@ public class BIMQueryEngine {
 	}
 
 	public Set<IfcRoot> conditionEqual(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
-		EqualOperator equalOperator = new EqualOperator(leftOperand, rightOperand);
+		EqualityOperator equalOperator = new EqualityOperator(leftOperand, rightOperand, true);
 		return equalOperator.getResult();
 	}
 
 	public Set<IfcRoot> conditionGreaterEqual(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
-		GreaterEqualOperator greaterEqualOperator = new GreaterEqualOperator(leftOperand, rightOperand);
+		IntPredicate predicate = (i) -> i >= 0;
+		RelationalOperator greaterEqualOperator = new RelationalOperator(leftOperand, rightOperand, predicate);
 		return greaterEqualOperator.getResult();
 	}
 
 	public Set<IfcRoot> conditionGreater(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
-		GreaterOperator greaterOperator = new GreaterOperator(leftOperand, rightOperand);
+		IntPredicate predicate = (i) -> i > 0;
+		RelationalOperator greaterOperator = new RelationalOperator(leftOperand, rightOperand, predicate);
 		return greaterOperator.getResult();
 	}
 
 	public Set<IfcRoot> conditionLessEqual(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
-		LessEqualOperator lessEqualOperator = new LessEqualOperator(leftOperand, rightOperand);
+		IntPredicate predicate = (i) -> i <= 0;
+		RelationalOperator lessEqualOperator = new RelationalOperator(leftOperand, rightOperand, predicate);
 		return lessEqualOperator.getResult();
 	}
 
 	public Set<IfcRoot> conditionLess(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
-		LessOperator lessOperator = new LessOperator(leftOperand, rightOperand);
+		IntPredicate predicate = (i) -> i < 0;
+		RelationalOperator lessOperator = new RelationalOperator(leftOperand, rightOperand, predicate);
 		return lessOperator.getResult();
 	}
 
 	public Set<IfcRoot> conditionNotEqual(Map<IfcRoot, List<Object>> leftOperand, String rightOperand) {
-		NotEqualOperator notEqualOperator = new NotEqualOperator(leftOperand, rightOperand);
+		EqualityOperator notEqualOperator = new EqualityOperator(leftOperand, rightOperand, false);
 		return notEqualOperator.getResult();
 	}
 
@@ -164,17 +194,19 @@ public class BIMQueryEngine {
 		return allObjects;
 	}
 
-	public List<SProject> getAllProjects() {
+	public List<String> getAllProjects() throws ProjectGetException {
 		try {
-			return client.getBimsie1ServiceInterface().getAllProjects(true, true);
+			List<String> projects = new ArrayList<String>();
+			client.getBimsie1ServiceInterface().getAllProjects(true, true)
+					.forEach(project -> projects.add(project.getName()));
+			return projects;
 		} catch (ServerException e) {
-			e.printStackTrace();
+			throw new ProjectGetException();
 		} catch (UserException e) {
-			e.printStackTrace();
+			throw new ProjectGetException();
 		} catch (PublicInterfaceNotFoundException e) {
-			e.printStackTrace();
+			throw new ProjectGetException();
 		}
-		return null;
 	}
 
 	public IfcModelInterface getModel() {
@@ -185,44 +217,47 @@ public class BIMQueryEngine {
 		return project;
 	}
 
-	public SProject getProjectByName(String name) {
+	public SProject getProjectByName(String name) throws ProjectGetException, ProjectNotFoundException {
 		try {
 			List<SProject> projects = client.getBimsie1ServiceInterface().getProjectsByName(name);
-			if (projects.size() == 0)
-				return null;
+			if (projects.isEmpty())
+				throw new ProjectNotFoundException();
 			return projects.get(0);
 		} catch (ServerException e) {
-			e.printStackTrace();
+			throw new ProjectGetException();
 		} catch (UserException e) {
-			e.printStackTrace();
+			throw new ProjectGetException();
 		} catch (PublicInterfaceNotFoundException e) {
-			e.printStackTrace();
+			throw new ProjectGetException();
 		}
-		return null;
 	}
 
-	public SProject getProjectByPoid(Long poid) {
+	public SProject getProjectByPoid(Long poid) throws ProjectGetException {
 		try {
 			return client.getBimsie1ServiceInterface().getProjectByPoid(poid);
 		} catch (ServerException e) {
-			e.printStackTrace();
+			throw new ProjectGetException();
 		} catch (UserException e) {
-			e.printStackTrace();
+			throw new ProjectGetException();
 		} catch (PublicInterfaceNotFoundException e) {
-			e.printStackTrace();
+			throw new ProjectGetException();
 		}
-		return null;
 	}
 
 	public long getProjectObjectID() {
 		return poid;
 	}
 
-	public boolean initializeProject(String projectname) {
-		System.out.println("Initializing Project...");
+	public void initializeProject(String projectname) throws ProjectGetException, ProjectNotFoundException {
+		System.out.println("Initializing project...");
 		project = getProjectByName(projectname);
 		poid = project.getOid();
-		return true;
+	}
+
+	public Map<IfcRoot, List<Object>> join(List<Object> objects, Set<IfcRoot> related) {
+		Map<IfcRoot, List<Object>> result = new HashMap<IfcRoot, List<Object>>();
+		related.forEach(key -> result.put(key, objects));
+		return result;
 	}
 
 	public Map<IfcRoot, List<Object>> queryAttribute(Set<IfcRoot> objects, String attribute) {
@@ -237,17 +272,11 @@ public class BIMQueryEngine {
 		return query.getResult();
 	}
 
-	@SuppressWarnings("unchecked")
 	public Set<IfcRoot> queryEntity(String entity) {
 		Set<IfcRoot> result = new HashSet<IfcRoot>();
-		try {
-			Class<IfcRoot> cls = IfcRoot.class;
-			Class<?> entityClass = Class.forName("org.bimserver.models.ifc2x3tc1." + entity);
-			if (cls.isAssignableFrom(entityClass))
-				result.addAll(model.getAllWithSubTypes((Class<? extends IfcRoot>) entityClass));
-		} catch (ClassNotFoundException e) {
-			// Empty Block
-		}
+		EClass clazz = model.getPackageMetaData().getEClass(entity);
+		if (clazz != null)
+			result.addAll(model.getAllWithSubTypes(clazz));
 		return result;
 	}
 
@@ -315,44 +344,43 @@ public class BIMQueryEngine {
 		return query.getResult();
 	}
 
-	public boolean refreshProject() {
-		System.out.println("Refreshing Project...");
+	public void refreshProject() throws ProjectRefreshException, ModelRefreshException {
 		try {
-			project = client.getBimsie1ServiceInterface().getProjectByPoid(poid);
-			return refreshModel();
-		} catch (ServerException e) {
-			e.printStackTrace();
-		} catch (UserException e) {
-			e.printStackTrace();
-		} catch (PublicInterfaceNotFoundException e) {
-			e.printStackTrace();
+			project = getProjectByPoid(poid);
+			refreshModel();
+		} catch (ProjectGetException e) {
+			throw new ProjectRefreshException();
 		}
-		return false;
 	}
 
-	public boolean refreshModel() {
-		System.out.println("Refreshing Model...");
+	public void refreshModel() throws ModelRefreshException {
+		System.out.println("Refreshing model...");
 		try {
 			// Load model without lazy loading (complete model at once)
 			model = client.getModel(project, project.getLastRevisionId(), true, false);
 			allObjects = new HashSet<IfcRoot>(model.getAllWithSubTypes(IfcRoot.class));
-			return true;
 		} catch (UserException e) {
-			e.printStackTrace();
+			throw new ModelRefreshException();
 		} catch (ServerException e) {
-			e.printStackTrace();
+			throw new ModelRefreshException();
 		} catch (BimServerClientException e) {
-			e.printStackTrace();
+			throw new ModelRefreshException();
 		} catch (PublicInterfaceNotFoundException e) {
-			e.printStackTrace();
+			throw new ModelRefreshException();
 		}
-		return false;
 	}
 
-	public Map<IfcRoot, List<Object>> relateObjects(List<Object> objects, Set<IfcRoot> related) {
-		Map<IfcRoot, List<Object>> result = new HashMap<IfcRoot, List<Object>>();
-		related.forEach(key -> result.put(key, objects));
-		return result;
+	public void removeProject() throws ProjectRemoveException {
+		System.out.println("Removing the current working project...");
+		try {
+			client.getBimsie1ServiceInterface().deleteProject(poid);
+		} catch (ServerException e) {
+			throw new ProjectRemoveException();
+		} catch (UserException e) {
+			throw new ProjectRemoveException();
+		} catch (PublicInterfaceNotFoundException e) {
+			throw new ProjectRemoveException();
+		}
 	}
 
 }

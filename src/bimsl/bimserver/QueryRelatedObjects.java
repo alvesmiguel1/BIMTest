@@ -5,7 +5,6 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 
@@ -54,9 +53,9 @@ public class QueryRelatedObjects {
 						queue.add(ret);
 				}
 			} catch (IllegalAccessException e) {
-				// Empty Block
+				System.err.println(e.getMessage());
 			} catch (InvocationTargetException e) {
-				// Empty Block
+				System.err.println(e.getMessage());
 			}
 		}
 
@@ -67,7 +66,7 @@ public class QueryRelatedObjects {
 		depthIncrease--;
 		if (!nodes.add(object))
 			return;
-		
+
 		if (all || object.getClass().getSimpleName().equals(type)) {
 			result.add((IfcRoot) object);
 			if (noMaxDepth) {
@@ -78,12 +77,9 @@ public class QueryRelatedObjects {
 		if (noMaxDepth || currentDepth < maxDepth) {
 			try {
 				Class<?> newClass = Class.forName(object.getClass().getCanonicalName());
-				Object newObject = newClass.cast(object);
-				Method[] methods = newClass.getMethods();
-				List<Method> methodlist = Arrays.asList(methods);
-				methodlist.forEach(method -> verifyMethod(method, newObject));
+				Arrays.asList(newClass.getMethods()).forEach(method -> verifyMethod(method, newClass.cast(object)));
 			} catch (ClassNotFoundException e) {
-				return;
+				System.err.println(e.getMessage());
 			}
 		}
 

@@ -1,7 +1,6 @@
 package bimsl.bimserver;
 
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,34 +30,30 @@ public class QueryProperty {
 
 	public Object checkProperty(IfcPropertySingleValue ifcProperty) {
 
-		Object ret = null;
 		try {
 			Class<?> propClass = ifcProperty.getNominalValue().getClass();
 			Class<?> newClass = Class.forName(propClass.getCanonicalName());
 			Object newObject = newClass.cast(ifcProperty.getNominalValue());
 			String simpleName = propClass.getSimpleName();
-
 			if (simpleName.equals("Ifc2x3tc1Package") || simpleName.equals("Ifc2x3tc1PackageImpl"))
-				ret = newObject;
-			else {
-				Method getWrappedValue = newClass.getMethod("getWrappedValue");
-				Object wrappedValue = getWrappedValue.invoke(newObject);
-				ret = wrappedValue;
-			}
+				return newObject;
+			else
+				return newClass.getMethod("getWrappedValue").invoke(newObject);
+
 		} catch (ClassNotFoundException e) {
-			// Empty Block
+			System.err.println(e.getMessage());
 		} catch (NoSuchMethodException e) {
-			// Empty Block
+			System.err.println(e.getMessage());
 		} catch (SecurityException e) {
-			// Empty Block
+			System.err.println(e.getMessage());
 		} catch (IllegalAccessException e) {
-			// Empty Block
+			System.err.println(e.getMessage());
 		} catch (IllegalArgumentException e) {
-			// Empty Block
+			System.err.println(e.getMessage());
 		} catch (InvocationTargetException e) {
-			// Empty Block
+			System.err.println(e.getMessage());
 		}
-		return ret;
+		return null;
 
 	}
 

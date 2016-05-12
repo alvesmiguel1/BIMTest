@@ -3,6 +3,7 @@ package bimsl.bimserver;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,8 +23,8 @@ public class QueryAttribute {
 		this.attribute = attribute;
 	}
 
-	public void getAttribute(IfcRoot object) {
-		
+	public List<Object> getAttribute(IfcRoot object) {
+
 		try {
 			List<Object> resList = new ArrayList<Object>();
 			Class<?> newClass = Class.forName(object.getClass().getCanonicalName());
@@ -34,8 +35,7 @@ public class QueryAttribute {
 				getAttribute = newClass.getMethod("getGlobalId");
 			} else if (attribute.equals("WrappedValue")) {
 				resList.add(newObject);
-				result.put(object, resList);
-				return;
+				return resList;
 			} else if (attribute.equals("DefaultName")) {
 				getAttribute = newClass.getMethod("getName");
 			} else if (attribute.equals("Package")) {
@@ -50,27 +50,35 @@ public class QueryAttribute {
 				else
 					resList.add(ret);
 			}
-			result.put(object, resList);
+			return resList;
 		} catch (ClassNotFoundException e) {
-			// Empty Block
+			return Collections.emptyList();
 		} catch (NoSuchMethodException e) {
-			// Empty Block
+			return Collections.emptyList();
 		} catch (SecurityException e) {
-			// Empty Block
+			return Collections.emptyList();
 		} catch (IllegalAccessException e) {
-			// Empty Block
+			return Collections.emptyList();
 		} catch (IllegalArgumentException e) {
-			// Empty Block
+			return Collections.emptyList();
 		} catch (InvocationTargetException e) {
-			// Empty Block
+			return Collections.emptyList();
 		}
-		
+
+	}
+
+	public void wrap(IfcRoot object) {
+
+		List<Object> lst = getAttribute(object);
+		if (!lst.isEmpty())
+			result.put(object, lst);
+
 	}
 
 	public Map<IfcRoot, List<Object>> getResult() {
 
 		result = new HashMap<IfcRoot, List<Object>>();
-		objects.forEach(object -> getAttribute(object));
+		objects.forEach(object -> wrap(object));
 		return result;
 
 	}
